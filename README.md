@@ -14,8 +14,12 @@ To install from command line:
 
 ```bash
 git clone git@github.com:AlexanderC/pt.md-gnome-extension.git
-unzip -q pt.md-gnome-extension/dist/MyPackBox@alexanderc.zip -d ~/.local/share/gnome-shell/extensions/MyPackBox@alexanderc/
+cd pt.md-gnome-extension
+# Install pre-buit extension
+unzip -q dist/MyPackBox@alexanderc.zip -d ~/.local/share/gnome-shell/extensions/MyPackBox@alexanderc/
 gnome-shell-extension-tool -e MyPackBox@alexanderc
+# ... or install from source
+npm run install 
 ```
 
 Or install it from [https://extensions.gnome.org/](https://extensions.gnome.org/).

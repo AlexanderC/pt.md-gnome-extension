@@ -10,10 +10,12 @@
     "uninstall": "npm run disable && rm -rf ~/.local/share/gnome-shell/extensions/MyPackBox@alexanderc",
     "install": "npm run move && npm run enable",
     "reinstall": "npm run uninstall && npm run install",
+    "reload": "gnome-shell-extension-tool -r MyPackBox@alexanderc || echo 'Unable to reload, skipping...'",
     "start": "gnome-shell-extension-prefs",
-    "debug": "gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'Main.lookingGlass.toggle();'",
     "compile": "glib-compile-schemas MyPackBox@alexanderc/schemas/",
-    "build": "npm run compile && zip -r -j dist/MyPackBox@alexanderc.zip MyPackBox@alexanderc"
+    "logs": "journalctl -f -o cat /usr/bin/gnome-shell",
+    "sudo-logs": "sudo journalctl -f -o cat /usr/bin/gnome-shell",
+    "build": "npm run compile && zip -r dist/MyPackBox@alexanderc.zip MyPackBox@alexanderc/ --exclude=MyPackBox@alexanderc/schemas/org.gnome.shell.extensions.mypackbox.gschema.xml"
   },
   "repository": {
     "type": "git",

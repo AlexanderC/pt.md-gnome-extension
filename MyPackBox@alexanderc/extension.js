@@ -1,34 +1,27 @@
 'use strict';
 
+const { Clutter, Gio, Gtk, GLib, GObject, Soup, St } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
-const GObject = imports.gi.GObject;
-const Cairo = imports.cairo;
 const Mainloop = imports.mainloop;
 const Main = imports.ui.main;
 const Lang = imports.lang;
-const St = imports.gi.St;
 const PopupMenu = imports.ui.popupMenu;
 const PanelMenu = imports.ui.panelMenu;
 const Util = imports.misc.util;
 const Json = imports.gi.Json;
-const Soup = imports.gi.Soup;
-const Gio = imports.gi.Gio;
-//const Gettext = imports.gettext.domain($.metadata.name);
-const Config = imports.misc.config;
-
+//const Gettext = imports.gettext.domain(Me.metadata.name);
 //const _ = Gettext.gettext;
 const _ = x => x; // mock here
-const $ = ExtensionUtils.getCurrentExtension();
+const Me = ExtensionUtils.getCurrentExtension();
 
-const SHELL_MINOR = parseInt(Config.PACKAGE_VERSION.split('.')[1]);
 const SETTING_REFRESH_INTERVAL = 'refresh-interval';
 const SETTING_USERNAME = 'username';
 const SETTING_PASSWORD = 'password';
 const DEFAULT_POOL_INTERVAL = 180;
 
-var MyPackBox = class MyPackBox extends PanelMenu.Button {
+const MyPackBox = GObject.registerClass(class MyPackBox extends PanelMenu.Button {
   _init() {
-    super._init(0.0, $.metadata.name, false);
+    super._init(0.0, Me.metadata.name, false);
 
     // Initialize button
     PanelMenu.Button.prototype._init.call(this, 0.0);
@@ -38,18 +31,22 @@ var MyPackBox = class MyPackBox extends PanelMenu.Button {
     Soup.Session.prototype.add_feature.call(this._httpSession, new Soup.ProxyResolverDefault());
 
     // Setup button
-    this._label = new St.Label({ style_class: 'panel-label', text: _($.metadata.name) });
+    this._label = new St.Label({
+      y_align: Clutter.ActorAlign.CENTER,
+      text: _(Me.metadata.name),
+    });
     const topBox = new St.BoxLayout();
     topBox.add_actor(this._label);
-    this.actor.add_actor(topBox);
-    Main.panel._centerBox.add(this.actor, { y_fill: true });
+    this.add_actor(topBox);
     Main.panel._menus.addMenu(this.menu);
 
     // Setup widget
     this._widget = new St.Bin({ style_class: 'widget' });
-    const mainBox = new St.BoxLayout({ vertical: true });
-    mainBox.add_actor(this._widget);
-    this.menu.addActor(mainBox);
+    const _widget = new PopupMenu.PopupBaseMenuItem({
+      reactive: false,
+    });
+    _widget.actor.add_actor(this._widget);
+    this.menu.addMenuItem(_widget);
 
     // Load settings
     this._settings = ExtensionUtils.getSettings();
@@ -57,7 +54,7 @@ var MyPackBox = class MyPackBox extends PanelMenu.Button {
       this._refresh_interval = this._settings.get_int(SETTING_REFRESH_INTERVAL) || DEFAULT_POOL_INTERVAL;
       this._username = this._settings.get_string(SETTING_USERNAME);
       this._password = this._settings.get_string(SETTING_PASSWORD);
-      this.refreshUi();
+      this.refreshUi().catch(e => logError(e, 'Failed to refresh widget UI'));
     });
     this._settings.connect('changed::' + SETTING_REFRESH_INTERVAL, settingsWatcher);
     this._settings.connect('changed::' + SETTING_USERNAME, settingsWatcher);
@@ -68,7 +65,7 @@ var MyPackBox = class MyPackBox extends PanelMenu.Button {
     this.showLoadingUi();
 
     // Run ticker
-    this.refreshUi(true);
+    this.refreshUi(true).catch(e => logError(e, 'Failed to refresh widget UI'));
   }
 
   async refreshUi(recurse) {
@@ -84,7 +81,7 @@ var MyPackBox = class MyPackBox extends PanelMenu.Button {
 
     if (recurse) {
       Mainloop.timeout_add_seconds(this._refresh_interval, Lang.bind(this, function () {
-        this.refresh(recurse);
+        this.refresh(recurse).catch(e => logError(e, 'Failed to refresh widget UI'));
       }));
     }
   }
@@ -105,45 +102,60 @@ var MyPackBox = class MyPackBox extends PanelMenu.Button {
     // @todo Handle data
   }
 
-  // async loadJsonAsync(url, cb) {
-  //   let here = this;
-  //   let message = Soup.Message.new('GET', url);
+  // load_json_async(url, params, fun) {
+  //   if (_httpSession === undefined) {
+  //     _httpSession = new Soup.Session();
+  //     _httpSession.user_agent = this.user_agent;
+  //   } else {
+  //     // abort previous requests.
+  //     _httpSession.abort();
+  //   }
 
-  //   this._httpSession.queue_message(message, function (_session, message) {
-  //     let jp = new Json.Parser();
-  //     jp.load_from_data(message.response_body.data, -1);
-  //     cb.call(here, jp.get_root().get_object());
-  //   });
-  // },
+  //   let message = Soup.form_request_new_from_hash('GET', url, params);
 
-  destroy() {
-    this._settings.run_dispose();
-    super.destroy();
-  }
-}
+  //   _httpSession.queue_message(message, Lang.bind(this, function (_httpSession, message) {
+  //     try {
+  //       if (!message.response_body.data) {
+  //         fun.call(this, 0);
+  //         return;
+  //       }
+  //       let jp = JSON.parse(message.response_body.data);
+  //       fun.call(this, jp);
+  //     } catch (e) {
+  //       fun.call(this, 0);
+  //       return;
+  //     }
+  //   }));
+  //   return;
+  // }
+});
 
-if (SHELL_MINOR > 30) {
-  MyPackBox = GObject.registerClass(
-    { GTypeName: 'MyPackBox' },
-    MyPackBox
-  );
-}
+//MyPackBox
 
-let myPackBoxMenu;
+var myPackBoxMenu;
 
 function init() {
-  log(`initializing ${$.metadata.name} version ${$.metadata.version}`);
+  log(`initializing ${Me.metadata.name} version ${Me.metadata.version}`);
+
+  // ExtensionUtils.initTranslations(Me.metadata.name);
 }
 
 function enable() {
-  log(`enabling ${$.metadata.name} version ${$.metadata.version}`);
+  log(`enabling ${Me.metadata.name} version ${Me.metadata.version}`);
 
-  myPackBoxMenu = new MyPackBox();
-  Main.panel.addToStatusArea($.metadata.name, myPackBoxMenu);
+  try {
+    myPackBoxMenu = new MyPackBox();
+  } catch (e) {
+    logError(e, 'Unable to initialize extension');
+  }
+
+  if (myPackBoxMenu) {
+    Main.panel.addToStatusArea(Me.metadata.name, myPackBoxMenu);
+  }
 }
 
 function disable() {
-  log(`disabling ${$.metadata.name} version ${$.metadata.version}`);
+  log(`disabling ${Me.metadata.name} version ${Me.metadata.version}`);
 
   if (myPackBoxMenu !== null) {
     myPackBoxMenu.destroy();
