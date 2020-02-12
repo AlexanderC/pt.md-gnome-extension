@@ -1,0 +1,26 @@
+{
+  "name": "pt.md-gnome-extension",
+  "version": "1.0.0",
+  "description": "Gnome Shell Extension: Manage your packages handled by Moldovan PostTerminal (pt.md)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlexanderC/pt.md-gnome-extension-.git"
+  },
+  "keywords": [
+    "pt.md",
+    "postterminal",
+    "moldova",
+    "gnome",
+    "extension"
+  ],
+  "author": "AlexanderC <alexander.moldova@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AlexanderC/pt.md-gnome-extension-/issues"
+  },
+  "homepage": "https://github.com/AlexanderC/pt.md-gnome-extension-#readme"
+}
