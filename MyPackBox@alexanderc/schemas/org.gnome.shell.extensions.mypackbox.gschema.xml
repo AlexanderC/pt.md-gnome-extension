@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnome-shell-extensions">
+	<schema
+		id="org.gnome.shell.extensions.mypackbox"
+		path="/org/gnome/shell/extensions/mypackbox/">
+        <key type="s" name="username">
+            <default>""</default>
+            <summary>Username</summary>
+        </key>
+        <key type="s" name="password">
+            <default>""</default>
+            <summary>Password</summary>
+        </key>
+        <key type="i" name="refresh-interval">
+            <default>180</default>
+            <summary>Refresh Interval</summary>
+        </key>
+	</schema>
+</schemalist>

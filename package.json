@@ -4,11 +4,20 @@
   "description": "Gnome Shell Extension: Manage your packages handled by Moldovan PostTerminal (pt.md)",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "move": "cp -r MyPackBox@alexanderc ~/.local/share/gnome-shell/extensions/",
+    "enable": "gnome-shell-extension-tool -e MyPackBox@alexanderc  || echo 'Already enabled, skipping...'",
+    "disable": "gnome-shell-extension-tool -d MyPackBox@alexanderc || echo 'Already disabled, skipping...'",
+    "uninstall": "npm run disable && rm -rf ~/.local/share/gnome-shell/extensions/MyPackBox@alexanderc",
+    "install": "npm run move && npm run enable",
+    "reinstall": "npm run uninstall && npm run install",
+    "start": "gnome-shell-extension-prefs",
+    "debug": "gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'Main.lookingGlass.toggle();'",
+    "compile": "glib-compile-schemas MyPackBox@alexanderc/schemas/",
+    "build": "npm run compile && zip -r -j dist/MyPackBox@alexanderc.zip MyPackBox@alexanderc"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AlexanderC/pt.md-gnome-extension-.git"
+    "url": "git+https://github.com:AlexanderC/pt.md-gnome-extension.git"
   },
   "keywords": [
     "pt.md",
@@ -20,7 +29,15 @@
   "author": "AlexanderC <alexander.moldova@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/AlexanderC/pt.md-gnome-extension-/issues"
+    "url": "https://github.com/AlexanderC/pt.md-gnome-extension/issues"
   },
-  "homepage": "https://github.com/AlexanderC/pt.md-gnome-extension-#readme"
+  "homepage": "https://github.com/AlexanderC/pt.md-gnome-extension#readme",
+  "devDependencies": {
+    "husky": "^4.2.2"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run build"
+    }
+  }
 }
