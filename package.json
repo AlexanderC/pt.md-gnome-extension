@@ -11,11 +11,13 @@
     "install": "npm run move && npm run enable",
     "reinstall": "npm run uninstall && npm run install",
     "reload": "gnome-shell-extension-tool -r MyPackBox@alexanderc || echo 'Unable to reload, skipping...'",
-    "start": "gnome-shell-extension-prefs",
+    "settings": "gnome-shell-extension-prefs",
     "compile": "glib-compile-schemas MyPackBox@alexanderc/schemas/",
     "logs": "journalctl -f -o cat /usr/bin/gnome-shell",
     "sudo-logs": "sudo journalctl -f -o cat /usr/bin/gnome-shell",
-    "build": "npm run compile && zip -r dist/MyPackBox@alexanderc.zip MyPackBox@alexanderc/ --exclude=MyPackBox@alexanderc/schemas/org.gnome.shell.extensions.mypackbox.gschema.xml"
+    "build": "npm run compile && zip -r dist/MyPackBox@alexanderc.zip MyPackBox@alexanderc/ --exclude=MyPackBox@alexanderc/schemas/org.gnome.shell.extensions.mypackbox.gschema.xml",
+    "start": "dbus-run-session -- gnome-shell --nested --wayland 2>&1 | grep MyPackBox",
+    "clean-start": "npm run reinstall && npm run start"
   },
   "repository": {
     "type": "git",
