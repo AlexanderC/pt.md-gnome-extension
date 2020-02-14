@@ -15,7 +15,7 @@
     "compile": "glib-compile-schemas MyPackBox@alexanderc/schemas/",
     "logs": "journalctl -f -o cat /usr/bin/gnome-shell",
     "sudo-logs": "sudo journalctl -f -o cat /usr/bin/gnome-shell",
-    "build": "npm run compile && zip -r dist/MyPackBox@alexanderc.zip MyPackBox@alexanderc/ --exclude=MyPackBox@alexanderc/schemas/org.gnome.shell.extensions.mypackbox.gschema.xml",
+    "build": "npm run compile && rm dist/MyPackBox@alexanderc.zip || echo 'No old build, skipping...' && cd MyPackBox@alexanderc/ && zip -r ../dist/MyPackBox@alexanderc.zip . --exclude=schemas/org.gnome.shell.extensions.mypackbox.gschema.xml",
     "start": "dbus-run-session -- gnome-shell --nested --wayland 2>&1 | grep MyPackBox",
     "clean-start": "npm run reinstall && npm run start"
   },
@@ -37,11 +37,11 @@
   },
   "homepage": "https://github.com/AlexanderC/pt.md-gnome-extension#readme",
   "devDependencies": {
-    "husky": "^4.2.2"
+    "husky": "^4.2.3"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run build"
+      "pre-push": "npm run build && git add . && git commit -a -m'Build extension'"
     }
   }
 }
