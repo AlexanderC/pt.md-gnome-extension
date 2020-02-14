@@ -59,6 +59,7 @@ const MyPackBox = Lang.Class({
   _settingsConnectIds: [],
   _token: null,
   _newOrders: [],
+  _activeTimeouts: {},
 
   destroy() {
     for (const settingConnectId of this._settingsConnectIds) {
@@ -68,6 +69,13 @@ const MyPackBox = Lang.Class({
     this._token = null;
     this._httpSession = null;
     this._newOrders = [];
+
+
+    for (const lid of Object.keys(this._activeTimeouts)) {
+      Mainloop.source_remove(lid);
+    }
+
+    this._activeTimeouts = {};
 
     // Call parent
     this.parent();
@@ -192,8 +200,10 @@ const MyPackBox = Lang.Class({
 
       const lid = Mainloop.timeout_add_seconds(this._refreshInterval, Lang.bind(this, function () {
         Mainloop.source_remove(lid);
+        delete this._activeTimeouts[lid];
         this._wrapPromise(this.refreshUi(recurse), 'Failed to refresh widget UI');
       }));
+      this._activeTimeouts[lid] = true;
     }
   },
 
