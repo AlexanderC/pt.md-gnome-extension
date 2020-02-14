@@ -3,6 +3,8 @@
 # pt.md-gnome-extension
 Gnome Shell Extension: Manage your packages handled by Moldovan PostTerminal (pt.md)
 
+![Screenshot](assets/screenshot.png?raw=true "Screenshot")
+
 ### Prerequisites
 
 - [ ] Gnome v3.x
