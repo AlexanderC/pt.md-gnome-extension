@@ -65,11 +65,11 @@ const MyPackBox = Lang.Class({
     for (const settingConnectId of this._settingsConnectIds) {
       this._settings.disconnect(settingConnectId);
     }
-    this._settingsConnectIds = [];
-    this._token = null;
-    this._httpSession = null;
-    this._newOrders = [];
 
+    this._settingsConnectIds = [];
+    this._token = null; // @todo whould we reset it? e.g. after lock screen?
+    this._httpSession = null;
+    this._newOrders = []; // @todo whould we reset it? e.g. after lock screen?
 
     for (const lid of Object.keys(this._activeTimeouts)) {
       Mainloop.source_remove(lid);
