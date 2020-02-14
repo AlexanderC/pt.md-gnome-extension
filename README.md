@@ -22,7 +22,7 @@ gnome-shell-extension-tool -e MyPackBox@alexanderc
 npm run install 
 ```
 
-Or install it from [https://extensions.gnome.org/](https://extensions.gnome.org/).
+Or (preferably!) install it from [https://extensions.gnome.org/](https://extensions.gnome.org/extension/2609/mypackbox/).
 
 ### Roadmap
 
