@@ -13,8 +13,8 @@
     "reload": "gnome-shell-extension-tool -r MyPackBox@alexanderc || echo 'Unable to reload, skipping...'",
     "settings": "gnome-shell-extension-prefs",
     "compile": "glib-compile-schemas MyPackBox@alexanderc/schemas/",
-    "logs": "journalctl -f -o cat /usr/bin/gnome-shell",
-    "sudo-logs": "sudo journalctl -f -o cat /usr/bin/gnome-shell",
+    "logs": "journalctl -f -o cat /usr/bin/gnome-shell | grep MyPackBox",
+    "sudo-logs": "sudo journalctl -f -o cat /usr/bin/gnome-shell | grep MyPackBox",
     "build": "npm run compile && rm dist/MyPackBox@alexanderc.zip || echo 'No old build, skipping...' && cd MyPackBox@alexanderc/ && zip -r ../dist/MyPackBox@alexanderc.zip . --exclude=schemas/org.gnome.shell.extensions.mypackbox.gschema.xml",
     "start": "dbus-run-session -- gnome-shell --nested --wayland 2>&1 | grep MyPackBox",
     "clean-start": "npm run reinstall && npm run start"
