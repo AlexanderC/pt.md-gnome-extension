@@ -28,10 +28,11 @@ const Gettext = imports.gettext;
 const _ = x => x;
 
 // Constants
+const API_BASE = 'http://postterminal.xyz';
 const SETTING_REFRESH_INTERVAL = 'refresh-interval';
 const SETTING_USERNAME = 'username';
 const SETTING_PASSWORD = 'password';
-const DEFAULT_POOL_INTERVAL = 180;
+const DEFAULT_POOL_INTERVAL = 60;
 
 function _log(msg) {
   return log(`[${Me.metadata.name}] ${msg}`);
@@ -52,14 +53,21 @@ const MyPackBox = Lang.Class({
   _menuBox: null,
   _widgetScroll: null,
   _widget: null,
+  _settingsMenuBox: null,
+  _settingsMenuItem: null,
   _settings: null,
   _settingsConnectIds: [],
+  _token: null,
+  _newOrders: [],
 
   destroy() {
     for (const settingConnectId of this._settingsConnectIds) {
       this._settings.disconnect(settingConnectId);
     }
     this._settingsConnectIds = [];
+    this._token = null;
+    this._httpSession = null;
+    this._newOrders = [];
 
     // Call parent
     this.parent();
@@ -67,7 +75,6 @@ const MyPackBox = Lang.Class({
 
   _init() {
     this.parent(0.0, Me.metadata.name);
-
 
     // Soup session (see https://bugzilla.gnome.org/show_bug.cgi?id=661323#c64)
     this._httpSession = new Soup.SessionAsync();
@@ -85,7 +92,7 @@ const MyPackBox = Lang.Class({
     // Setup widget
     this._menuRoot = new PopupMenu.PopupBaseMenuItem({
       style_class: 'menu',
-      reactive: false
+      reactive: false,
     });
     this._menu = new St.Bin({
       style_class: 'menu-bin',
@@ -108,14 +115,31 @@ const MyPackBox = Lang.Class({
     this._menu.set_child(this._menuBox);
     this._menuRoot.actor.add_actor(this._menu);
     this.menu.addMenuItem(this._menuRoot);
+    this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+    this._settingsMenuBox = new PopupMenu.PopupBaseMenuItem({
+      style_class: 'menu',
+      reactive: false,
+    });
+    this._settingsMenuItem = Main.panel.statusArea.aggregateMenu._system
+      ._createActionButton(
+        'preferences-system-symbolic',
+        _(`${Me.metadata.name} Settings`)
+      );
+    this._settingsMenuItem.set_label(_('Settings'));
+    this._settingsMenuItem.connect('clicked', Lang.bind(this, this._openSettings));
+    this._settingsMenuBox.actor.add_actor(this._settingsMenuItem);
+    this.menu.addMenuItem(this._settingsMenuBox);
 
     // Load settings
     this._settings = Convenience.getSettings();
     const settingsWatcher = Lang.bind(this, function () {
-      this._refresh_interval = this._settings.get_int(SETTING_REFRESH_INTERVAL) || DEFAULT_POOL_INTERVAL;
+      this._refreshInterval = this._settings.get_int(SETTING_REFRESH_INTERVAL) || DEFAULT_POOL_INTERVAL;
       this._username = this._settings.get_string(SETTING_USERNAME);
       this._password = this._settings.get_string(SETTING_PASSWORD);
-      this._wrapPromise(this.refreshUi(), 'Failed to refresh widget UI');
+
+      _log(`SETTING_REFRESH_INTERVAL=${this._refreshInterval}`);
+      _log(`SETTING_USERNAME=${this._username}`);
+      _log(`SETTING_PASSWORD=${this._password}`);
     });
     this._settingsConnectIds.push(
       this._settings.connect('changed::' + SETTING_REFRESH_INTERVAL, settingsWatcher),
@@ -135,15 +159,40 @@ const MyPackBox = Lang.Class({
     _log('Attempt to refresh UI');
 
     if (this.assertCredentials()) {
-      // @todo Load and data
-      this.rebuildCurrentUi({});
+      if (!this._token) {
+        try {
+          await this.authorize();
+        } catch (e) {
+          _logError(e, 'Failed to authorize');
+          Main.notify(
+            Me.metadata.name,
+            _('Failed to obtain authorization token')
+          );
+        }
+      }
+
+      // assure not failed to authorize...
+      if (this._token) {
+        try {
+          // @todo implement filtered listing
+          const data = await this.rpc('list');
+          this.rebuildCurrentUi(data);
+        } catch (e) {
+          _logError(e, 'Failed to fetch packages');
+          Main.notify(
+            Me.metadata.name,
+            _('Failed to fetch packages. Please check your credentials!')
+          );
+        }
+      }
     }
 
     if (recurse) {
-      _log(`Recurse in ${this._refresh_interval} seconds...`);
-      const lid = Mainloop.timeout_add_seconds(this._refresh_interval, Lang.bind(this, function () {
-        this._wrapPromise(this.refreshUi(recurse), 'Failed to refresh widget UI');
+      _log(`Recurse in ${this._refreshInterval} seconds...`);
+
+      const lid = Mainloop.timeout_add_seconds(this._refreshInterval, Lang.bind(this, function () {
         Mainloop.source_remove(lid);
+        this._wrapPromise(this.refreshUi(recurse), 'Failed to refresh widget UI');
       }));
     }
   },
@@ -151,12 +200,6 @@ const MyPackBox = Lang.Class({
   cleanupWidget() {
     this._widget._getMenuItems()
       .forEach(item => item.destroy());
-  },
-
-  textMenuItem(text) {
-    const menuItem = new PopupMenu.PopupMenuItem(text);
-    this._widget.addMenuItem(menuItem);
-    return menuItem;
   },
 
   assertCredentials() {
@@ -178,39 +221,256 @@ const MyPackBox = Lang.Class({
 
   rebuildCurrentUi(data) {
     this.cleanupWidget();
-    // @todo Handle data
+
+    if (data.items.length <= 0) {
+      this.textMenuItem(_('You have no packages...'));
+      return;
+    }
+    
+    let newOrders = 0;
+    this.packMenuHeader();
+    for (const item of data.items) {
+      if (!item.isPaid && this._newOrders.indexOf(item.orderID) === -1) {
+        this._newOrders.push(item.orderID);
+        newOrders++;
+      }
+      
+      this.packMenuItem(item);
+    }
+
+    if (newOrders > 0) {
+      Main.notify(
+        Me.metadata.name,
+        _('You have %s new package[s] in arrived!').format(newOrders)
+      );
+    }
+  },
+
+  packMenuHeader() {
+    const menuBox = new PopupMenu.PopupBaseMenuItem({
+      reactive: false,
+      style_class: 'package-item',
+    });
+    const menuItem = new St.BoxLayout({
+      style_class: 'package-row',
+    });
+
+    let idx = 0;
+    for (const name of [
+      'PAYMENT', 'STATUS', 'DATE', 
+      'CELL', 'TIME', 'SHOP', 'GOODS',
+    ]) {
+      const label = new St.Label({
+        y_align: Clutter.ActorAlign.CENTER,
+        text: _(name),
+      });
+      menuItem.insert_child_at_index(label, idx++);
+    }
+
+    menuBox.actor.add_actor(menuItem);
+    this._widget.addMenuItem(menuBox);
+
+    return menuBox;
+  },
+
+  packMenuItem(item) {
+    const menuBox = new PopupMenu.PopupBaseMenuItem({
+      reactive: false,
+      style_class: 'package-item',
+    });
+    const menuItem = new St.BoxLayout({
+      style_class: 'package-row',
+    });
+
+    if (!item.isPaid) {
+      const payButton = Main.panel.statusArea.aggregateMenu._system._createActionButton(
+        `pay-packege-${item.orderID}`,
+        _('Pay')
+      );
+      payButton.add_style_class_name('pay-button');
+      payButton.set_label(_('Pay'));
+      payButton.connect('clicked', Lang.bind(this, async function() {
+        try {
+          const paidLabel = new St.Label({
+            y_align: Clutter.ActorAlign.CENTER,
+            text: _('Paid'),
+          });
+          menuItem.remove_child(menuItem.get_child_at_index(0));
+          menuItem.insert_child_at_index(paidLabel, 0);
+
+          const payHtml = await this.rpc('pay', [ item.orderID ]);
+          const tmpFile = Gio.file_new_tmp(`${Me.metadata.name}-XXXXXX-payframe-${item.orderID}.html`)[0];
+          _log(`Output payframe content into: ${tmpFile.get_path()}`);
+          tmpFile.replace_contents(payHtml, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+          this.menu.actor.hide();
+          Util.spawn([
+            "xdg-open",
+            tmpFile.get_path(),
+          ]);
+        } catch (e) {
+          _logError(e, `Failed prepare payframe for order: ${item.orderID}`);
+        }
+      }));
+      menuItem.insert_child_at_index(payButton, 0);
+    } else {
+      const paidLabel = new St.Label({
+        y_align: Clutter.ActorAlign.CENTER,
+        text: _('Paid'),
+      });
+      menuItem.insert_child_at_index(paidLabel, 0);
+    }
+
+    let idx = 1;
+
+    const statusLabel = new St.Label({
+      y_align: Clutter.ActorAlign.CENTER,
+      text: _(item.orderStateCode),
+    });
+    menuItem.insert_child_at_index(statusLabel, idx++);
+
+    const dateLabel = new St.Label({
+      y_align: Clutter.ActorAlign.CENTER,
+      text: this._formatDate(item.orderDate),
+    });
+    menuItem.insert_child_at_index(dateLabel, idx++);
+
+    const cellLabel = new St.Label({
+      y_align: Clutter.ActorAlign.CENTER,
+      text: (item.cellCode ? `${cellCode} (${cellCategoryName})` : _('N/A')),
+    });
+    menuItem.insert_child_at_index(cellLabel, idx++);
+
+    const cellTimeLabel = new St.Label({
+      y_align: Clutter.ActorAlign.CENTER,
+      text: (item.cellTimeEnd
+        ? `${this._formatDate(item.cellTimeBegin)}-${this._formatDate(item.cellTimeEnd)}`
+        : _('N/A')),
+    });
+    menuItem.insert_child_at_index(cellTimeLabel, idx++);
+
+    const shopLabel = new St.Label({
+      y_align: Clutter.ActorAlign.CENTER,
+      text: (item.shopCompanyName || _('N/A')),
+    });
+    menuItem.insert_child_at_index(shopLabel, idx++);
+
+    const goodsNameLabel = new St.Label({
+      y_align: Clutter.ActorAlign.CENTER,
+      text: item.goodsName,
+    });
+    menuItem.insert_child_at_index(goodsNameLabel, idx++);
+    
+    menuBox.actor.add_actor(menuItem);
+    this._widget.addMenuItem(menuBox);
+
+    return menuBox;
+  },
+
+  textMenuItem(text) {
+    const menuBox = new PopupMenu.PopupBaseMenuItem({
+      reactive: false,
+      style_class: 'text-item',
+    });
+    const menuItem = new PopupMenu.PopupMenuItem(text);
+
+    menuBox.actor.add_actor(menuItem.actor);
+    this._widget.addMenuItem(menuBox);
+
+    return menuBox;
+  },
+
+  async authorize() {
+    const { token } = await this._request(
+      'POST',
+      `${API_BASE}/token`,
+      {
+        username: this._username,
+        password: this._password,
+      }
+    );
+    this._token = token;
+  },
+
+  async rpc(method, params = []) {
+    const response = await this._request(
+      'POST',
+      `${API_BASE}/rpc`,
+      {
+        jsonrpc: '2.0',
+        id: 0,
+        method,
+        params,
+      }
+    );
+
+    if (response.error) {
+      throw new Error(
+        `${response.error.message}: ${response.error.data.message}`
+      );
+    }
+
+    return response.result;
+  },
+
+  async _request(method, url, data) {
+    return new Promise((resolve, reject) => {
+      const body = JSON.stringify(data);
+      const message = Soup.Message.new(method, url);
+      message.set_request(
+        'application/json',
+        Soup.MemoryUse.COPY,
+        body,
+        //body.length,
+      );
+
+      if (this._token) {
+        message.request_headers.append('Authorization', `Bearer ${this._token}`);
+      }
+
+      _log(`Send ${method} request to ${url} w/ data=${body} [${this._token ? 'AUTH' : 'ANON'}]`);
+
+      this._httpSession.queue_message(message, Lang.bind(this, function (_session, response) {
+        if (response.status_code !== Soup.KnownStatusCode.OK) {
+          return reject(new Error(
+            `Request failed w/ status ${response.status_code}: ${response.reason_phrase}`
+          ));
+        }
+
+        try {
+          if (!message.response_body.data) {
+            return reject(new Error('Missing response body'));
+          }
+
+          _log(`Response from ${method}::${url} w/ length of ${message.response_body.data.length} bytes`);
+          resolve(JSON.parse(message.response_body.data));
+        } catch (e) {
+          reject(e);
+        }
+      }));
+    });
+  },
+
+  _openSettings() {
+    this.menu.actor.hide();
+    Util.spawn([
+      "gnome-shell-extension-prefs",
+      Me.uuid,
+    ]);
   },
 
   _wrapPromise(p, msg) {
     return p.catch(e => _logError(e, msg));
   },
 
-  // load_json_async(url, params, fun) {
-  //   if (_httpSession === undefined) {
-  //     _httpSession = new Soup.Session();
-  //     _httpSession.user_agent = this.user_agent;
-  //   } else {
-  //     // abort previous requests.
-  //     _httpSession.abort();
-  //   }
+  _formatDate(str, full = true) {
+    const date = new Date(str);
 
-  //   let message = Soup.form_request_new_from_hash('GET', url, params);
+    if (!full) {
+      return `${date.getDate()}/${date.getMonth() + 1}`;
+    }
 
-  //   _httpSession.queue_message(message, Lang.bind(this, function (_httpSession, message) {
-  //     try {
-  //       if (!message.response_body.data) {
-  //         fun.call(this, 0);
-  //         return;
-  //       }
-  //       let jp = JSON.parse(message.response_body.data);
-  //       fun.call(this, jp);
-  //     } catch (e) {
-  //       fun.call(this, 0);
-  //       return;
-  //     }
-  //   }));
-  //   return;
-  // },
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  }
 });
 
 var myPackBoxMenu;

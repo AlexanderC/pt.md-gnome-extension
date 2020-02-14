@@ -10,11 +10,43 @@
     margin: 0;
 }
 
-.widget {
+.widget-scroll {
     max-height: 450px;
     min-height: 50px;
+}
+
+.widget {
     width: 300px;
     margin: 0;
     padding: 0;
     color: #ffffff;
+}
+
+.text-item {
+    word-break: break-all;
+}
+
+.package-item {
+    padding: 0;
+    margin: 0;
+}
+
+.package-row {
+    padding: 0;
+    margin: 0;
+    align-items: center;
+    align-content: center;
+}
+
+.package-row > * {
+    padding: 0;
+    margin: 2px;
+    text-align: center;
+    align-content: center;
+    width: 100px;
+    word-break: break-all;
+}
+
+.pay-button {
+    padding: 2px;
 }

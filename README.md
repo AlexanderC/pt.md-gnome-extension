@@ -27,6 +27,8 @@ Or install it from [https://extensions.gnome.org/](https://extensions.gnome.org/
 ### Roadmap
 
 - [ ] Add multilanguage support
+- [ ] Implement filters
+- [ ] Make the code look slicker))
 
 ### Support
 

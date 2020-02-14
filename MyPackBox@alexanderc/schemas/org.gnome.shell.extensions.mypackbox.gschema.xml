@@ -12,7 +12,7 @@
             <summary>Password</summary>
         </key>
         <key type="i" name="refresh-interval">
-            <default>180</default>
+            <default>60</default>
             <summary>Refresh Interval</summary>
         </key>
 	</schema>
