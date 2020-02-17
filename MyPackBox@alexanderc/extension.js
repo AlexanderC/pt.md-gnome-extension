@@ -65,17 +65,16 @@ const MyPackBox = Lang.Class({
     for (const settingConnectId of this._settingsConnectIds) {
       this._settings.disconnect(settingConnectId);
     }
-
     this._settingsConnectIds = [];
-    this._token = null; // @todo whould we reset it? e.g. after lock screen?
-    this._httpSession = null;
-    this._newOrders = []; // @todo whould we reset it? e.g. after lock screen?
 
     for (const lid of Object.keys(this._activeTimeouts)) {
       Mainloop.source_remove(lid);
     }
-
     this._activeTimeouts = {};
+    
+    this._token = null; // @todo whould we reset it? e.g. after lock screen?
+    this._httpSession = null;
+    this._newOrders = []; // @todo whould we reset it? e.g. after lock screen?
 
     // Call parent
     this.parent();
@@ -83,10 +82,6 @@ const MyPackBox = Lang.Class({
 
   _init() {
     this.parent(0.0, Me.metadata.name);
-
-    // Soup session (see https://bugzilla.gnome.org/show_bug.cgi?id=661323#c64)
-    this._httpSession = new Soup.SessionAsync();
-    Soup.Session.prototype.add_feature.call(this._httpSession, new Soup.ProxyResolverDefault());
 
     // Setup top bar button
     this._topBox = new St.BoxLayout({ style_class: 'button' });
@@ -423,6 +418,12 @@ const MyPackBox = Lang.Class({
   },
 
   async _request(method, url, data) {
+    if (!this._httpSession) {
+      // Soup session (see https://bugzilla.gnome.org/show_bug.cgi?id=661323#c64)
+      this._httpSession = new Soup.SessionAsync();
+      Soup.Session.prototype.add_feature.call(this._httpSession, new Soup.ProxyResolverDefault());
+    }
+
     return new Promise((resolve, reject) => {
       const body = JSON.stringify(data);
       const message = Soup.Message.new(method, url);
