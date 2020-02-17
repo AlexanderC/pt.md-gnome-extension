@@ -350,7 +350,7 @@ const MyPackBox = Lang.Class({
     const cellTimeLabel = new St.Label({
       y_align: Clutter.ActorAlign.CENTER,
       text: (item.cellTimeEnd
-        ? `${this._formatDate(item.cellTimeBegin)}-${this._formatDate(item.cellTimeEnd)}`
+        ? `${this._formatDate(item.cellTimeBegin, false)}-${this._formatDate(item.cellTimeEnd, false)}`
         : _('N/A')),
     });
     menuItem.insert_child_at_index(cellTimeLabel, idx++);
