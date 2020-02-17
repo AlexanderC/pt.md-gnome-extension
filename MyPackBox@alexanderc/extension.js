@@ -298,7 +298,7 @@ const MyPackBox = Lang.Class({
         try {
           const paidLabel = new St.Label({
             y_align: Clutter.ActorAlign.CENTER,
-            text: _('Paid'),
+            text: _('Paying...'),
           });
           menuItem.remove_child(menuItem.get_child_at_index(0));
           menuItem.insert_child_at_index(paidLabel, 0);
@@ -341,7 +341,9 @@ const MyPackBox = Lang.Class({
 
     const cellLabel = new St.Label({
       y_align: Clutter.ActorAlign.CENTER,
-      text: (item.cellCode ? `${cellCode} (${cellCategoryName})` : _('N/A')),
+      text: (item.cellCode
+        ? `${item.cellCode} (${item.cellCategoryName})`
+        : _('N/A')),
     });
     menuItem.insert_child_at_index(cellLabel, idx++);
 
@@ -355,7 +357,7 @@ const MyPackBox = Lang.Class({
 
     const shopLabel = new St.Label({
       y_align: Clutter.ActorAlign.CENTER,
-      text: (item.shopCompanyName || _('N/A')),
+      text: item.shopCompanyName || _('N/A'),
     });
     menuItem.insert_child_at_index(shopLabel, idx++);
 
