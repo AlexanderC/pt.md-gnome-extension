@@ -1,6 +1,6 @@
 {
     "name": "MyPackBox",
-    "version": 5,
+    "version": 6,
     "description": "Manage your packages handled by Moldovan PostTerminal (pt.md)",
     "uuid": "MyPackBox@alexanderc",
     "settings-schema":  "org.gnome.shell.extensions.mypackbox",
