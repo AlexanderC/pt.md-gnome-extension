@@ -263,7 +263,7 @@ const MyPackBox = Lang.Class({
     let idx = 0;
     for (const name of [
       'PAYMENT', 'STATUS', 'DATE', 
-      'CELL', 'TIME', 'SHOP', 'GOODS',
+      'CELL', 'PICKUP DATES', 'SHOP', 'GOODS',
     ]) {
       const label = new St.Label({
         y_align: Clutter.ActorAlign.CENTER,
